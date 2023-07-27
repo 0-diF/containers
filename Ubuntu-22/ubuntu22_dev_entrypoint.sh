@@ -18,7 +18,6 @@ if [ -z "${EDK2_DOCKER_USER_HOME}" ] || [ ! -d "${EDK2_DOCKER_USER_HOME}" ]; the
   exit 1
 fi
 
-
 #####################################################################
 # Create a user to run the command
 #
@@ -31,27 +30,29 @@ fi
 # - If the caller provides a username, we'll use it.  Otherwise, just use an
 # arbitrary username.
 EDK2_DOCKER_USER=${EDK2_DOCKER_USER:-edk2}
-#
-# - Get the uid and gid from the user's home directory.
-user_uid=$(stat -c "%u" "${EDK2_DOCKER_USER_HOME}")
-user_gid=$(stat -c "%g" "${EDK2_DOCKER_USER_HOME}")
-#
-# - Add the group.  We'll take a shortcut here and always name it the same as
-# the username.  The name is cosmetic, though.  The important thing is that the
-# gid matches.
-groupadd "${EDK2_DOCKER_USER}" -f -o -g "${user_gid}"
-#
-# - Add the user.
-useradd "${EDK2_DOCKER_USER}" -o -u "${user_uid}" -g "${user_gid}" \
-  -G sudo -d "${EDK2_DOCKER_USER_HOME}" -M -s /bin/bash
 
-echo "${EDK2_DOCKER_USER}":tianocore | chpasswd
+# Create group and user only when {EDK2_DOCKER_USER} not exists
+if ! id -u "${EDK2_DOCKER_USER}" >/dev/null 2>&1; then
 
-#####################################################################
-# Cleanup variables
-unset user_uid
-unset user_gid
+  # - Get the uid and gid from the user's home directory.
+  user_uid=$(stat -c "%u" "${EDK2_DOCKER_USER_HOME}")
+  user_gid=$(stat -c "%g" "${EDK2_DOCKER_USER_HOME}")
 
+  # - Add the group.  We'll take a shortcut here and always name it the same as
+  # the username.  The name is cosmetic, though.  The important thing is that the
+  # gid matches.
+  groupadd "${EDK2_DOCKER_USER}" -f -o -g "${user_gid}"
+
+  # - Add the user.
+  useradd "${EDK2_DOCKER_USER}" -o -u "${user_uid}" -g "${user_gid}" \
+    -G sudo -d "${EDK2_DOCKER_USER_HOME}" -M -s /bin/bash
+  echo "${EDK2_DOCKER_USER}":tianocore | chpasswd
+
+  # Cleanup variables
+  unset user_uid
+  unset user_gid
+
+fi
 
 #####################################################################
 # Drop permissions and run the command
