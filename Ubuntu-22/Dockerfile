@@ -120,7 +120,7 @@ ENV LC_ALL en_US.UTF-8
 RUN mkdir /edkrepo_install && \
     cd /edkrepo_install && \
     wget -O- ${EDKREPO_URL} | tar zxvf - && \
-    ./install.py --no-prompt --user $(id -nu) && \
+    ./install.py --no-prompt --system --user $(id -nu) && \
     mkdir -p /etc/edkrepo_skel && \
     cp -R /root/.edkrepo /etc/edkrepo_skel && \
     rm -rf /edkrepo_install
