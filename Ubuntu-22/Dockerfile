@@ -16,7 +16,8 @@
 FROM ubuntu:22.04 AS build
 
 # Set the EDKREPO URL (and version)
-ENV EDKREPO_URL=https://github.com/tianocore/edk2-edkrepo/releases/download/edkrepo-v2.1.2/edkrepo-2.1.2.tar.gz
+# ENV EDKREPO_URL=https://github.com/tianocore/edk2-edkrepo/releases/download/edkrepo-v2.1.2/edkrepo-2.1.2.tar.gz
+ENV EDKREPO_URL=https://github.com/tianocore/edk2-edkrepo/releases/download/edkrepo-v3.1.1/edkrepo-3.1.1.0.tar.gz
 
 # Suppresses a debconf error during apt-get install.
 ENV DEBIAN_FRONTEND=noninteractive
@@ -133,7 +134,9 @@ COPY init_edkrepo_conf.sh /usr/bin/init_edkrepo_conf
 
 #Building qemu from source:
 FROM build AS test
-ARG QEMU_URL="https://download.qemu.org/qemu-7.1.0.tar.xz"
+#ARG QEMU_URL="https://download.qemu.org/qemu-7.1.0.tar.xz"
+ARG QEMU_URL="https://download.qemu.org/qemu-8.0.3.tar.xz"
+ARG QEMU_VER="8.0.3"
 RUN apt-get update && apt-get install --yes --no-install-recommends \
         autoconf \
         automake \
@@ -148,7 +151,7 @@ RUN apt-get update && apt-get install --yes --no-install-recommends \
         tar && \
     mkdir -p qemu-build && cd qemu-build && \
     wget  "${QEMU_URL}" && \
-    tar -xf qemu-7.1.0.tar.xz --strip-components=1 && \
+    tar -xf qemu-${QEMU_VER}.tar.xz --strip-components=1 && \
     ./configure --target-list=x86_64-softmmu,arm-softmmu,aarch64-softmmu,riscv32-softmmu,riscv32-linux-user,riscv64-linux-user,riscv64-softmmu && \
     make install -j $(nproc) && \
     cd .. && \
@@ -163,13 +166,27 @@ FROM test AS dev
 
 # Install convenience tools.  Things we like having around, but aren't
 # required.
-RUN apt-get update && \
+
+RUN add-apt-repository ppa:neovim-ppa/unstable && \
+    apt-get update && \
     apt-get install --yes --no-install-recommends \
-        vim \
+        neovim \
         nano \
         less \
+        kitty \
+        curl \
+        jq \
         bear &&\
     apt-get clean
+
+# Install Zig (master) for experiment
+RUN mkdir -p /opt/zig && \
+  cd /opt/zig && \
+  curl -o zig-master.tar.xz "$(curl https://ziglang.org/download/index.json | jq -c '.master."x86_64-linux"."tarball"' | tr -d '"')" && \
+  tar xf zig-master.tar.xz && \
+  FOLDNAME=$(ls -t | grep "zig-linux-x86_64-" | head -n1) && \
+  ln -fs /opt/zig/"$FOLDNAME"/zig /opt/zig/current && \
+  ln -fs /opt/zig/current /usr/bin/zig
 
 # Setup the entry point
 COPY ubuntu22_dev_entrypoint.sh /usr/libexec/entrypoint
